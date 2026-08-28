@@ -25,11 +25,11 @@ const SiteSettings = mongoose.models.SiteSettings || mongoose.model('SiteSetting
 let connection;
 async function connect(){
   if(!process.env.MONGODB_URI) throw new Error('Server database is not configured.');
-  if(!connection) {
-    connection=mongoose.connect(process.env.MONGODB_URI,{serverSelectionTimeoutMS:5000,connectTimeoutMS:5000});
-    connection.catch(()=>{connection=null;});
-  }
-  return connection;
+  if(connection) return connection;
+  const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('Database connection timed out.')),4000));
+  const attempt=mongoose.connect(process.env.MONGODB_URI,{serverSelectionTimeoutMS:3500,connectTimeoutMS:3500,socketTimeoutMS:3500,maxPoolSize:1,serverApi:{version:'1'}});
+  connection=Promise.race([attempt,timeout]);
+  try{return await connection;}catch(error){connection=null;mongoose.disconnect().catch(()=>{});throw error;}
 }
 function token(user){ return jwt.sign({sub:user._id.toString(),role:user.role},process.env.JWT_SECRET,{expiresIn:'7d'}); }
 function adminToken(){ return jwt.sign({admin:true,role:'owner'},process.env.JWT_SECRET,{expiresIn:'8h'}); }
