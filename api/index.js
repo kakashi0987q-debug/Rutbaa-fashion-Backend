@@ -7,7 +7,14 @@ import serverless from 'serverless-http';
 import { timingSafeEqual } from 'node:crypto';
 
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_ORIGIN?.split(',') || true, methods: ['GET','POST','PATCH','DELETE'] }));
+const configuredOrigins=(process.env.FRONTEND_ORIGIN||'').split(',').map(origin=>origin.trim()).filter(Boolean);
+app.use(cors({
+  origin(origin,callback){
+    if(!origin || configuredOrigins.includes(origin) || /^https:\/\/[-a-z0-9]+\.vercel\.app$/i.test(origin)) return callback(null,true);
+    return callback(new Error('Origin is not allowed.'));
+  },
+  methods:['GET','POST','PATCH','DELETE'], allowedHeaders:['Content-Type','Authorization']
+}));
 app.use(express.json({ limit: '2mb' }));
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({ name:{type:String,required:true,trim:true,maxlength:80}, email:{type:String,required:true,unique:true,lowercase:true,trim:true}, passwordHash:{type:String,required:true}, role:{type:String,enum:['customer','owner'],default:'customer'} }, {timestamps:true}));
 const Product = mongoose.models.Product || mongoose.model('Product', new mongoose.Schema({
