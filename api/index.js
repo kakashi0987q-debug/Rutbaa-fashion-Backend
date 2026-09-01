@@ -3,7 +3,6 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import serverless from 'serverless-http';
 import { timingSafeEqual } from 'node:crypto';
 
 const app = express();
@@ -70,4 +69,6 @@ app.get('/api/reviews',async(_,res)=>{try{await connect();res.json({reviews:awai
 app.post('/api/reviews',authenticate,async(req,res)=>{try{const {text,rating}=req.body;const review=await Review.create({user:req.user._id,text,rating});res.status(201).json({review});}catch{res.status(400).json({message:'A 10–1000 character review and a 1–5 rating are required.'});}});
 app.patch('/api/reviews/:id/reply',authenticate,owner,async(req,res)=>{try{const review=await Review.findByIdAndUpdate(req.params.id,{$set:{reply:{text:req.body.text,createdAt:new Date()}}},{new:true,runValidators:true});review?res.json({review}):res.status(404).json({message:'Review not found.'});}catch{res.status(400).json({message:'A reply is required.'});}});
 app.use((_,res)=>res.status(404).json({message:'Not found.'}));
-export default serverless(app);
+// Vercel invokes default exports from /api as Node request handlers.
+// Export Express directly; wrapping it as an AWS Lambda handler makes every request hang.
+export default app;
